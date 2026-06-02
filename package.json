@@ -1,0 +1,52 @@
+{
+  "name": "@debi-studio/telepi",
+  "version": "0.4.2-debi.1",
+  "description": "TelePi DebiStudio Fork — voice, mirror, media, stealth, model search",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/debi-studio/telepi.git"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "pi",
+    "coding-agent",
+    "voice",
+    "telepi",
+    "debi"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "tp": "./telepi.sh"
+  },
+  "files": [
+    "dist",
+    "telepi.sh",
+    "systemd",
+    "README.md",
+    "install.sh",
+    "update.sh"
+  ],
+  "scripts": {
+    "start": "bash telepi.sh start",
+    "update": "bash update.sh"
+  },
+  "dependencies": {
+    "@grammyjs/auto-retry": "^2.0.2",
+    "@mariozechner/pi-coding-agent": "0.70.2",
+    "grammy": "^1.35.0",
+    "minimatch": "^10.2.4"
+  },
+  "optionalDependencies": {
+    "parakeet-coreml": "^2.2.0",
+    "sherpa-onnx-node": "1.12.32"
+  }
+}

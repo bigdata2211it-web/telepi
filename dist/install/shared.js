@@ -1,0 +1,10 @@
+export const TELEPI_LAUNCHD_LABEL = "com.telepi";
+export const TELEPI_LAUNCH_AGENT_FILENAME = `${TELEPI_LAUNCHD_LABEL}.plist`;
+export const TELEPI_SERVICE_NAME = "telepi";
+export const TELEPI_SERVICE_UNIT_FILENAME = `${TELEPI_SERVICE_NAME}.service`;
+export const TELEPI_EXTENSION_FILENAME = "telepi-handoff.ts";
+export const TELEPI_SETUP_PLACEHOLDER_BOT_TOKEN = "your-bot-token-here";
+export const TELEPI_SETUP_PLACEHOLDER_ALLOWED_USER_IDS = "123456789";
+export const TELEPI_SETUP_PLACEHOLDER_WORKSPACE = "/absolute/path/to/your/main/project";
+export const TELEPI_SYSTEMD_LOG_DIR_RELATIVE = ".local/state/telepi/logs";
+export const TELEPI_SYSTEMD_USER_DIR_RELATIVE = ".config/systemd/user";

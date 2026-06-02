@@ -1,0 +1,13 @@
+[Unit]
+Description=TelePi Telegram Bot (fork — %i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/DebiForeverProfile/telepi/telepi.sh start --instance %i
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

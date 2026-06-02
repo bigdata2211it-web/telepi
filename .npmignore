@@ -1,0 +1,7 @@
+node_modules/
+dist/.backup*
+install.sh
+README.md
+systemd
+telepi.sh
+update.sh
