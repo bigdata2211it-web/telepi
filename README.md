@@ -1,82 +1,73 @@
-# TelePi DebiStudio Fork
+# 🤖 TelePi DebiStudio Fork
 
-Форк `@futurelab-studio/telepi` с патчами:
+> Форк `@futurelab-studio/telepi` с расширенным функционалом: голосовые бэкенды, поиск моделей, зеркала ботов, отправка медиа, docker-stealthy интеграция.
 
-- ✅ **Voice backend** — выбор sherpa-onnx / Groq / OpenAI, ввод API ключей через чат
-- ✅ **Model search** — `/model <текст>` фильтрует модели
-- ✅ **Mirror** — создание копий бота через `/mirror`
-- ✅ **Media send** — Pi пишет путь к файлу, telepi сам отправляет в чат
-- ✅ **Markdown fix** — `**жирный**` → `<b>жирный</b>`, fallback без звёздочек
-- ✅ **1M контекст** — deepseek-v4-flash-free, minimax-m3-free
-- ✅ **--instance** — запуск конкретного зеркала
+## Возможности
 
-## Установка
+| Фича | Описание |
+|------|----------|
+| 🎙 **Voice** | Groq / OpenAI / Sherpa-ONNX, API ключи через Telegram UI |
+| 🔍 **Model search** | `/model <текст>` — фильтр + variant (`:high`) |
+| 🪞 **Mirror** | `/mirror` — создать копию бота в 3 шага |
+| 📁 **Media send** | Локальные файлы и URL → автоотправка, альбомы до 10 |
+| ✏️ **Markdown fix** | `**bold**` → HTML, fallback без звёздочек |
+| 🦊 **Stealth-browser** | docker-stealthy + MCP-camoufox для обхода защит |
+| 🚀 **1M context** | deepseek-v4-flash-free, minimax-m3-free, mimo-v2.5-free |
+
+## Быстрый старт
 
 ```bash
-# Клонируем профиль
-git clone https://github.com/your/DebiForeverProfile ~/DebiForeverProfile
-
-# Ставим
+# Установка
 cd ~/DebiForeverProfile/telepi
 bash install.sh
-```
 
-## Конфиг
+# Настройка конфига
+cp .env.example ~/.config/telepi/config.env
+nano ~/.config/telepi/config.env  # вставь токен
 
-`~/.config/telepi/config.env`:
-
-```env
-TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
-TELEGRAM_ALLOWED_USER_IDS=123456789
-TELEPI_WORKSPACE=/home/user/projects
-```
-
-## Запуск
-
-```bash
-# Основной бот
+# Запуск
 tp start
-
-# Зеркало
-tp start --instance mirror
-
-# Через systemd
-systemctl --user start telepi@main
-systemctl --user start telepi@mirror
 ```
+
+## Команды
+
+| Команда | Что делает |
+|---------|-----------|
+| `tp start` | Запустить бота |
+| `tp start --instance mirror` | Запустить зеркало |
+| `systemctl --user restart telepi-debi` | Перезапустить |
 
 ## Структура
 
 ```
 telepi/
-├── dist/               ← патенчед код
-├── systemd/            ← сервис темплейты
-├── telepi.sh           ← entry point (--instance поддержка)
-├── install.sh          ← установщик
-└── README.md
+├── dist/              — патенчед код
+├── telepi.sh          — entry point (--instance)
+├── systemd/           — сервис темплейты
+├── install.sh         — установщик
+├── update.sh          — обновление форка
+├── package.json       — @debi-studio/telepi
+├── CHANGELOG.md       — история версий
+└── LICENSE            — MIT
 ```
 
 ## Обновление
 
 ```bash
-# Обновить оригинал
-npm i -g @futurelab-studio/telepi
-
-# Обновить форк
-cp -r /home/debi/.npm-global/lib/node_modules/@futurelab-studio/telepi/dist/* dist/
+bash update.sh
+systemctl --user restart telepi-debi
 ```
-
-Патчи не слетают — они под гитом в `DebiForeverProfile/`.
 
 ## Портируемость
 
-Скопировать на другой сервер:
+Весь форк самодостаточен. Копируй на любую машину с Node.js:
 
 ```bash
-scp -r ~/DebiForeverProfile/telepi user@server:~/
-# + config.env + systemd enable
+tar czf telepi.tar.gz ~/DebiForeverProfile/telepi/
+scp telepi.tar.gz user@server:~/
+# + node + config.env
 ```
 
 ## Лицензия
 
-Как у оригинала — MIT.
+MIT © DebiStudio
