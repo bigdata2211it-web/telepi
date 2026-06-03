@@ -1,5 +1,5 @@
 {
-  "name": "@itgigfather/telepi",
+  "name": "gig-telepi",
   "version": "0.5.0",
   "description": "TelePi DebiStudio Fork — кроссплатформенный Telegram-бот для Pi Coding Agent. Voice, mirror, media, stealth, model search, 1M context.",
   "license": "MIT",

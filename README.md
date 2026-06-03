@@ -1,9 +1,9 @@
 # 🤖 TelePi DebiStudio Fork
 
-![npm](https://img.shields.io/npm/v/telepi?label=npm)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/bigdata2211it-web/telepi?label=release)
+![CI/CD](https://github.com/bigdata2211it-web/telepi/actions/workflows/ci.yml/badge.svg)
 ![node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
-![license](https://img.shields.io/npm/l/telepi)
-![platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey)
+![platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows-lightgrey)
 
 > Форк `@futurelab-studio/telepi` — полноценный Telegram-интерфейс для Pi Coding Agent.
 
