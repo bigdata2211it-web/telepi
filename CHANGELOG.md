@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.4.2-debi.1 (2026-06-02)
+## v0.4.2-debi.1 (2026-06-02) — initial release
 
 - Форк от @futurelab-studio/telepi
 - Voice backend: выбор sherpa-onnx / Groq / OpenAI, ввод ключей через чат

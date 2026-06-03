@@ -1,15 +1,15 @@
 {
-  "name": "@debi-studio/telepi",
+  "name": "telepi",
   "version": "0.4.2-debi.1",
   "description": "TelePi DebiStudio Fork — кроссплатформенный Telegram-бот для Pi Coding Agent. Voice, mirror, media, stealth, model search, 1M context.",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/debi-studio/telepi.git"
+    "url": "git+https://github.com/bigdata2211it-web/telepi.git"
   },
-  "homepage": "https://github.com/debi-studio/telepi#readme",
+  "homepage": "https://github.com/bigdata2211it-web/telepi#readme",
   "bugs": {
-    "url": "https://github.com/debi-studio/telepi/issues"
+    "url": "https://github.com/bigdata2211it-web/telepi/issues"
   },
   "keywords": [
     "telegram",

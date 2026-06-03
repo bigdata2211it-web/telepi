@@ -1,8 +1,8 @@
 # 🤖 TelePi DebiStudio Fork
 
-![npm](https://img.shields.io/npm/v/@debi-studio/telepi?label=npm)
+![npm](https://img.shields.io/npm/v/telepi?label=npm)
 ![node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
-![license](https://img.shields.io/npm/l/@debi-studio/telepi)
+![license](https://img.shields.io/npm/l/telepi)
 ![platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey)
 
 > Форк `@futurelab-studio/telepi` — полноценный Telegram-интерфейс для Pi Coding Agent.
@@ -27,7 +27,7 @@
 
 ```bash
 # Требования: Node.js v20+, git
-git clone https://github.com/debi-studio/telepi.git
+git clone https://github.com/bigdata2211it-web/telepi.git
 cd telepi
 bash install.sh
 
@@ -43,7 +43,7 @@ tp start
 
 ```powershell
 # Требования: Node.js v20+, PowerShell 5.1+
-git clone https://github.com/debi-studio/telepi.git
+git clone https://github.com/bigdata2211it-web/telepi.git
 cd telepi
 
 # Установка (скачает NSSM, создаст конфиг, зарегистрирует сервис)
@@ -176,7 +176,7 @@ telepi/
 
 ```bash
 # Клонировать
-git clone https://github.com/debi-studio/telepi.git
+git clone https://github.com/bigdata2211it-web/telepi.git
 cd telepi
 
 # Установить зависимости (включая devDependencies при необходимости)
