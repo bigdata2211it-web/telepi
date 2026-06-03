@@ -1,0 +1,9 @@
+node_modules
+.git
+.gitignore
+*.md
+systemd
+telepi.ps1
+install-windows.ps1
+update.sh
+node_modules
