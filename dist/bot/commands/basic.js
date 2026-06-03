@@ -1,5 +1,15 @@
+import { execFile } from "node:child_process";
 import { escapeHTML } from "../../format.js";
 import { renderFailedText, renderHelpHTML, renderHelpPlain, renderPrefixedError, renderSessionInfoHTML, renderSessionInfoPlain, renderVoiceSupportHTML, renderVoiceSupportPlain } from "../message-rendering.js";
+
+function systemctl(args) {
+  return new Promise((resolve) => {
+    execFile("systemctl", ["--user", ...args], (error, stdout) => {
+      resolve(error ? "error" : (stdout?.toString().trim() || "unknown"));
+    });
+  });
+}
+
 export function createBasicCommandHandlers(deps) {
     const { sessionRegistry, getExistingSession, getOrCreateSession, refreshChatScopedCommands, openCommandPicker, handleUserPrompt, getLastPrompt, extensionDialogs, getVoiceBackendStatus, safeReply, } = deps;
     const handleStartCommand = async (ctx, target) => {
@@ -77,6 +87,36 @@ export function createBasicCommandHandlers(deps) {
             fallbackText: renderSessionInfoPlain(info),
         }, target);
     };
+    const handleStatusCommand = async (ctx, target) => {
+        // Определяем кто мы: основной сервис или инстанс-зеркало
+        const configPath = process.env.TELEPI_CONFIG || "";
+        const instanceMatch = configPath.match(/instances\/([^/]+)\/config\.env$/);
+        const serviceName = instanceMatch
+            ? `telepi@${instanceMatch[1]}.service`
+            : "telepi.service";
+        const displayName = instanceMatch
+            ? `telepi@${instanceMatch[1]}`
+            : "telepi (main)";
+
+        const [status, activeSince] = await Promise.all([
+            systemctl(["is-active", serviceName]),
+            systemctl(["show", serviceName, "--property=ActiveEnterTimestamp", "--no-pager"]),
+        ]);
+        const icon = status === "active" ? "🟢" : status === "error" ? "⚫" : "🔴";
+        const since = activeSince.replace("ActiveEnterTimestamp=", "").trim() || "?";
+
+        const html = [
+            `<b>${icon} ${displayName}</b>`,
+            `Status: ${status}`,
+            `Since: ${since}`,
+            `PID: ${process.pid}`,
+        ].join("\n");
+        const plain = [
+            `${icon} ${displayName}: ${status} (since ${since}, PID ${process.pid})`,
+        ].join("\n");
+        await safeReply(ctx, html, { fallbackText: plain }, target);
+    };
+
     const handleRetryCommand = async (ctx, target) => {
         const lastPrompt = getLastPrompt(target);
         if (!lastPrompt) {
@@ -93,6 +133,7 @@ export function createBasicCommandHandlers(deps) {
         handleCommandsCommand,
         handleAbortCommand,
         handleSessionCommand,
+        handleStatusCommand,
         handleRetryCommand,
     };
 }

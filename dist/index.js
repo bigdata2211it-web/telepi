@@ -44,6 +44,13 @@ export async function startBot() {
     process.once("SIGTERM", () => shutdown("SIGTERM"));
     async function startPolling() {
         try {
+            // Явно закрываем любые висящие сессии Telegram перед стартом
+            for (let i = 0; i < 3; i++) {
+                try {
+                    await fetch(`https://api.telegram.org/bot${bot.token}/close`, { method: "POST" });
+                } catch {}
+                await new Promise((r) => setTimeout(r, 1000));
+            }
             await bot.start({
                 drop_pending_updates: true,
                 onStart: () => {
@@ -60,6 +67,11 @@ export async function startBot() {
             if (is409 && restartAttempts < MAX_RESTART_ATTEMPTS) {
                 restartAttempts++;
                 console.warn(`Polling error (attempt ${restartAttempts}/${MAX_RESTART_ATTEMPTS}): ${message}`);
+                // Закрываем старую long polling сессию перед retry
+                try {
+                    bot.stop();
+                    await fetch(`https://api.telegram.org/bot${bot.token}/close`, { method: "POST" });
+                } catch {}
                 console.warn(`Restarting polling in ${RESTART_DELAY_MS / 1000}s...`);
                 await new Promise((resolve) => setTimeout(resolve, RESTART_DELAY_MS));
                 return startPolling();

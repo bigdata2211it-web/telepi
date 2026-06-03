@@ -1,11 +1,15 @@
 {
   "name": "@debi-studio/telepi",
   "version": "0.4.2-debi.1",
-  "description": "TelePi DebiStudio Fork — voice, mirror, media, stealth, model search",
+  "description": "TelePi DebiStudio Fork — кроссплатформенный Telegram-бот для Pi Coding Agent. Voice, mirror, media, stealth, model search, 1M context.",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/debi-studio/telepi.git"
+  },
+  "homepage": "https://github.com/debi-studio/telepi#readme",
+  "bugs": {
+    "url": "https://github.com/debi-studio/telepi/issues"
   },
   "keywords": [
     "telegram",
@@ -14,7 +18,9 @@
     "coding-agent",
     "voice",
     "telepi",
-    "debi"
+    "debi",
+    "nssm",
+    "windows-service"
   ],
   "publishConfig": {
     "access": "public"
@@ -25,18 +31,28 @@
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
-    "tp": "./telepi.sh"
+    "tp": "./telepi.sh",
+    "telepi": "./telepi.sh",
+    "telepi-win": "./telepi.ps1"
   },
   "files": [
     "dist",
     "telepi.sh",
-    "systemd",
-    "README.md",
+    "telepi.ps1",
     "install.sh",
+    "install-windows.ps1",
+    "systemd",
+    "CHANGELOG.md",
+    "README.md",
+    "LICENSE",
+    ".env.example",
     "update.sh"
   ],
   "scripts": {
     "start": "bash telepi.sh start",
+    "start:win": "powershell -NoProfile -File telepi.ps1 start",
+    "stop": "powershell -NoProfile -File telepi.ps1 stop",
+    "status": "powershell -NoProfile -File telepi.ps1 status",
     "update": "bash update.sh"
   },
   "dependencies": {

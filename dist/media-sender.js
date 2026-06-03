@@ -1,7 +1,10 @@
 import { readFile, unlink } from "node:fs/promises";
-import { createWriteStream, existsSync, statSync } from "node:fs";
+import { createWriteStream, existsSync, readFileSync, statSync } from "node:fs";
 import { tmpdir, homedir } from "node:os";
 import path from "node:path";
+import { Bot } from "grammy";
+
+const INSTANCES_DIR = path.join(homedir(), ".config", "telepi", "instances");
 
 const HOME_DIR = homedir();
 const ALBUM_MAX = 10;
@@ -212,14 +215,140 @@ async function sendMediaGroup(api, target, groupItems) {
 }
 
 /**
+ * Read token from a config.env file.
+ */
+function readTokenFromConfig(configPath) {
+  if (!existsSync(configPath)) return null;
+  const text = readFileSync(configPath, "utf-8");
+  const match = text.match(/TELEGRAM_BOT_TOKEN=(.+)/);
+  if (!match) return null;
+  return match[1].trim();
+}
+
+/**
+ * Build a map of bot usernames to instance configs by scanning instances/ and main config.
+ */
+async function buildBotMap() {
+  const botMap = {};
+  const seenUsers = new Set();
+
+  const scanConfig = async (configPath, label) => {
+    const token = readTokenFromConfig(configPath);
+    if (!token) return;
+    try {
+      const resp = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+      if (!resp.ok) return;
+      const data = await resp.json();
+      const result = data?.result || {};
+      const username = result.username;
+      const firstName = result.first_name;
+      if (username && !seenUsers.has(username)) {
+        seenUsers.add(username);
+        botMap[username] = { token, label, firstName };
+      }
+    } catch {}
+  };
+
+  // Main config
+  await scanConfig(path.join(homedir(), ".config", "telepi", "config.env"), "main");
+
+  // Instances
+  if (existsSync(INSTANCES_DIR)) {
+    const { readdir } = await import("node:fs/promises");
+    const dirs = await readdir(INSTANCES_DIR, { withFileTypes: true });
+    for (const dir of dirs) {
+      if (dir.isDirectory()) {
+        await scanConfig(path.join(INSTANCES_DIR, dir.name, "config.env"), dir.name);
+      }
+    }
+  }
+
+  return botMap;
+}
+
+/**
+ * Resolve target instance from @bot: marker in text.
+ * Matches by bot username (case-insensitive) or by instance label.
+ */
+async function resolveBotInstance(text, defaultApi, defaultTarget) {
+  const match = text.match(/@bot:\s*(.+?)(?:\n|$)/);
+  if (!match) return null;
+  const query = match[1].trim().toLowerCase();
+
+  const botMap = await buildBotMap();
+
+  // Find by username, display name, or label
+  let entry = null;
+  for (const [username, info] of Object.entries(botMap)) {
+    const display = (info.firstName || "").toLowerCase();
+    const uname = username.toLowerCase();
+    if (uname === query || uname.includes(query) || display.includes(query) || info.label === query) {
+      entry = info;
+      break;
+    }
+  }
+
+  if (!entry) {
+    console.error(`Bot "${query}" not found. Available: ${Object.keys(botMap).join(", ")}`);
+    return null;
+  }
+
+  // Read admin IDs from the instance config for chatId
+  let chatId = defaultTarget.chatId;
+  const configPath = entry.label === "main"
+    ? path.join(homedir(), ".config", "telepi", "config.env")
+    : path.join(INSTANCES_DIR, entry.label, "config.env");
+  if (existsSync(configPath)) {
+    const cfgText = readFileSync(configPath, "utf-8");
+    const idsMatch = cfgText.match(/TELEGRAM_ALLOWED_USER_IDS=(.+)/);
+    if (idsMatch) {
+      const ids = idsMatch[1].trim().split(",").map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+      if (ids.length > 0) chatId = ids[0];
+    }
+  }
+
+  const instanceBot = new Bot(entry.token);
+  const instanceTarget = { chatId, ...(defaultTarget.messageThreadId !== undefined ? { messageThreadId: defaultTarget.messageThreadId } : {}) };
+
+  console.log(`📤 Sending via @${Object.keys(botMap).find(k => botMap[k] === entry)} (${entry.label})`);
+  return { api: instanceBot.api, target: instanceTarget };
+}
+
+/**
  * Main entry: check final response text for media, send everything automatically.
  * Returns the media items found (for logging).
  */
 export async function maybeSendMedia(ctx, target, finalText, responseMessageId, bot) {
-  const items = extractMediaUrls(finalText);
-  if (items.length === 0) return [];
-
   const api = ctx?.api || bot.api;
+
+  // Check if we should send to another bot instance
+  const instanceTarget = await resolveBotInstance(finalText, api, target);
+  const sendApi = instanceTarget?.api || api;
+  const sendTarget = instanceTarget?.target || target;
+
+  // If @bot: marker exists but no media — send text to the target bot
+  const items = extractMediaUrls(finalText);
+  console.log(`🔍 maybeSendMedia: @bot=${!!instanceTarget}, media=${items.length}`);
+  if (items.length === 0) {
+    if (instanceTarget) {
+      const cleanText = finalText.replace(/\n?@bot:\s*.*?(?:\n|$)/, "").trim();
+      console.log(`📤 Sending text to bot chat ${sendTarget.chatId}: "${cleanText.slice(0, 50)}..."`);
+      if (cleanText) {
+        try {
+          await sendApi.sendMessage(sendTarget.chatId, cleanText, {
+            parse_mode: "HTML",
+            ...(sendTarget.messageThreadId !== undefined ? { message_thread_id: sendTarget.messageThreadId } : {}),
+          });
+          console.log(`✅ Text sent to bot via @bot:`);
+        } catch (err) {
+          console.error("❌ Failed to send text to bot:", err);
+        }
+      }
+    } else {
+      console.log(`⚠️  @bot: marker found but bot not resolved`);
+    }
+    return [];
+  }
 
   // Separate local vs remote, probe remote
   const remoteItems = items.filter(i => !i.isLocal);
@@ -248,13 +377,13 @@ export async function maybeSendMedia(ctx, target, finalText, responseMessageId, 
 
   // Send albums
   if (albumItems.length > 0) {
-    await sendMediaGroup(api, target, albumItems);
+    await sendMediaGroup(sendApi, sendTarget, albumItems);
   }
 
   // Send audio one by one
   for (const item of audioItems) {
     try {
-      await sendAudio(api, target, item);
+      await sendAudio(sendApi, sendTarget, item);
     } catch (err) {
       console.error("Failed to send audio:", err);
     }

@@ -86,7 +86,7 @@ export function createBot(config, sessionRegistry) {
     const getOrCreateSession = async (target) => sessionRegistry.getOrCreate(target);
     const extensionDialogs = createExtensionDialogManager({
         getContextKey,
-        sendTextMessage: (target, text, options) => sendTextMessage(bot.api, target, text, options),
+        sendTextMessage: (target, text, options) => _sendTextMessage(bot.api, target, text, options),
         editMessage: (target, messageId, text, options) => safeEditMessage(bot, target, messageId, text, options),
         defaultTimeoutMs: EXTENSION_UI_TIMEOUT_MS,
     });
@@ -299,6 +299,29 @@ export function createBot(config, sessionRegistry) {
         }
         await next();
     });
+    // Храним последний message_id с кнопками чтобы чистить старые
+    const lastButtonMessageId = new Map();
+    const updateQueueButtons = async (target, messageId) => {
+        if (!messageId) return;
+        const key = getPiSessionContextKey(target);
+        // Чистим кнопки на предыдущем сообщении
+        const prev = lastButtonMessageId.get(key);
+        if (prev && prev !== messageId) {
+            bot.api.editMessageReplyMarkup(target.chatId, prev, { reply_markup: undefined }).catch(() => {});
+        }
+        const busy = chatTaskRunner.isBusy(target);
+        const { InlineKeyboard } = await import("grammy");
+        if (busy) {
+            const keyboard = new InlineKeyboard()
+                .text("✖️", "cancel_last")
+                .text("🛑", "cancel_all");
+            bot.api.editMessageReplyMarkup(target.chatId, messageId, { reply_markup: keyboard }).catch(() => {});
+            lastButtonMessageId.set(key, messageId);
+        } else {
+            bot.api.editMessageReplyMarkup(target.chatId, messageId, { reply_markup: undefined }).catch(() => {});
+            lastButtonMessageId.delete(key);
+        }
+    };
     const chatTaskRunner = createChatTaskRunner({
         beginProcessing: (target, promptText) => chatState.beginProcessing(target, promptText),
         endProcessing: (target) => chatState.endProcessing(target),
@@ -309,6 +332,8 @@ export function createBot(config, sessionRegistry) {
                 error: formatError(error),
             }));
         },
+        updateQueueButtons,
+        abortSession: (target) => getExistingSession(target)?.abort(),
     });
     const handleUserPrompt = createPromptHandler({
         bot,
@@ -322,6 +347,7 @@ export function createBot(config, sessionRegistry) {
         refreshChatScopedCommands,
         extensionDialogs,
         sendBusyReply,
+        updateQueueButtons,
     });
     if (config.promptInboxDir) {
         const target = { chatId: config.telegramAllowedUserIds[0] };
@@ -353,7 +379,7 @@ export function createBot(config, sessionRegistry) {
         runTelePiPickerCommand,
         safeReply,
         safeEditMessage: (target, messageId, text, options) => safeEditMessage(bot, target, messageId, text, options),
-        sendTextMessage: (ctx, target, text, options) => sendTextMessage(ctx.api, target, text, options),
+        sendTextMessage: (ctx, target, text, options) => _sendTextMessage(ctx.api, target, text, options),
     });
     const { openCommandPicker } = commandPickerHandlers;
     const basicCommandHandlers = createBasicCommandHandlers({
@@ -367,8 +393,10 @@ export function createBot(config, sessionRegistry) {
         extensionDialogs,
         getVoiceBackendStatus,
         safeReply,
+        cancelLastPrompt: (target) => chatTaskRunner.cancelLast(target),
+        getQueueLength: (target) => chatTaskRunner.queueLength(target),
     });
-    const { handleStartCommand, handleHelpCommand, handleCommandsCommand, handleAbortCommand, handleSessionCommand, handleRetryCommand, } = basicCommandHandlers;
+    const { handleStartCommand, handleHelpCommand, handleCommandsCommand, handleAbortCommand, handleSessionCommand, handleStatusCommand, handleRetryCommand, } = basicCommandHandlers;
     const contextCommandHandlers = createContextCommandHandlers({
         getExistingSession,
         safeReply,
@@ -515,6 +543,13 @@ export function createBot(config, sessionRegistry) {
             return;
         }
         await handleSessionCommand(ctx, target);
+    });
+    bot.command("status", async (ctx) => {
+        const target = getTelegramTarget(ctx);
+        if (!target) {
+            return;
+        }
+        await handleStatusCommand(ctx, target);
     });
     bot.command(["sessions", "switch"], async (ctx) => {
         const target = getTelegramTarget(ctx);
@@ -689,13 +724,41 @@ export function createBot(config, sessionRegistry) {
         }
         await handleRetryCommand(ctx, target);
     });
-    bot.callbackQuery("pi_abort", async (ctx) => {
+    bot.callbackQuery("cancel_last", async (ctx) => {
         const target = getTelegramTarget(ctx);
-        await ctx.answerCallbackQuery({ text: "Aborting..." });
-        if (!target) {
-            return;
+        if (!target) { await ctx.answerCallbackQuery(); return; }
+        const result = chatTaskRunner.cancelLast(target);
+        if (result.action === "pop") {
+            const msg = result.remaining > 0 ? `✖️ ещё ${result.remaining} в очереди` : "✖️ отменён";
+            await ctx.answerCallbackQuery({ text: msg });
+        } else if (result.action === "abort") {
+            await ctx.answerCallbackQuery({ text: "🔄 прервано" });
+            // Удаляем прерванное сообщение
+            try { await ctx.deleteMessage(); } catch {}
+            // Обновляем кнопки на предыдущем ответе
+            const prevId = lastButtonMessageId.get(getPiSessionContextKey(target));
+            if (prevId) updateQueueButtons(target, prevId);
+        } else {
+            await ctx.answerCallbackQuery({ text: "Нечего отменять" });
         }
-        await getExistingSession(target)?.abort();
+    });
+    bot.callbackQuery("cancel_all", async (ctx) => {
+        const target = getTelegramTarget(ctx);
+        if (!target) { await ctx.answerCallbackQuery(); return; }
+        let text = "🛑 ";
+        if (chatTaskRunner.isBusy(target)) {
+            await getExistingSession(target)?.abort();
+            text += "прервано";
+        }
+        const cleared = chatTaskRunner.clearAll(target);
+        if (cleared > 0) {
+            text += text.endsWith("прервано") ? ` + ${cleared} из очереди` : `${cleared} из очереди`;
+        }
+        // Удаляем сообщение ТОЛЬКО если стримило
+        if (chatTaskRunner.isBusy(target)) {
+            try { await ctx.deleteMessage(); } catch {}
+        }
+        await ctx.answerCallbackQuery({ text: text || "Пусто" });
     });
     bot.callbackQuery(NOOP_PAGE_CALLBACK_DATA, async (ctx) => {
         await ctx.answerCallbackQuery();

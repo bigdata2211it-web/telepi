@@ -1,15 +1,16 @@
 import { InlineKeyboard } from "grammy";
 import { formatError } from "../errors.js";
 import { appendWithCap, buildStreamingPreview, formatToolSummaryLine, isMessageNotModifiedError, renderExtensionError, renderExtensionNotice, renderPromptFailure, renderToolEndMessage, renderToolStartMessage, renderMarkdownChunkWithinLimit, splitMarkdownForTelegram, TOOL_OUTPUT_PREVIEW_LIMIT, } from "./message-rendering.js";
-import { safeEditMessage, safeReply, sendChatAction, sendTextMessage, } from "./telegram-transport.js";
+import { safeEditMessage, safeReply, sendChatAction, sendTextMessage } from "./telegram-transport.js";
 import { createTelegramUIContext } from "../telegram-ui-context.js";
 import { maybeSendMedia } from "../media-sender.js";
 async function runPromptFlow(deps, ctx, target, userText, preloadedSlashCommands, images) {
-    const { bot, toolVerbosity, editDebounceMs, typingIntervalMs, ensureActiveSession, syncChatScopedCommands, refreshChatScopedCommands, extensionDialogs, } = deps;
+    const { bot, toolVerbosity, editDebounceMs, typingIntervalMs, ensureActiveSession, syncChatScopedCommands, refreshChatScopedCommands, extensionDialogs } = deps;
     const piSession = await ensureActiveSession(ctx, target);
     if (!piSession) {
         return;
     }
+    const originalMessageId = ctx.message?.message_id;
     const slashCommands = preloadedSlashCommands;
     if (slashCommands) {
         void syncChatScopedCommands(target, slashCommands).catch((error) => {
@@ -19,7 +20,9 @@ async function runPromptFlow(deps, ctx, target, userText, preloadedSlashCommands
     else {
         void refreshChatScopedCommands(target, piSession);
     }
-    const abortKeyboard = new InlineKeyboard().text("⏹ Abort", "pi_abort");
+    const cancelKeyboard = new InlineKeyboard()
+        .text("✖️", "cancel_last")
+        .text("🛑", "cancel_all");
     const toolStates = new Map();
     const toolCounts = new Map();
     let accumulatedText = "";
@@ -61,6 +64,7 @@ async function runPromptFlow(deps, ctx, target, userText, preloadedSlashCommands
         }
         return result;
     };
+    const replyToOriginal = originalMessageId ? { message_id: originalMessageId } : undefined;
     const ensureResponseMessage = async () => {
         if (responseMessageId) {
             return;
@@ -75,7 +79,8 @@ async function runPromptFlow(deps, ctx, target, userText, preloadedSlashCommands
             const message = await sendTextMessage(bot.api, target, preview.text, {
                 parseMode: preview.parseMode,
                 fallbackText: preview.fallbackText,
-                replyMarkup: abortKeyboard,
+                replyMarkup: cancelKeyboard,
+                replyParameters: replyToOriginal,
             });
             responseMessageId = message.message_id;
             lastRenderedText = preview.text;
@@ -113,7 +118,7 @@ async function runPromptFlow(deps, ctx, target, userText, preloadedSlashCommands
             await safeEditMessage(bot, target, responseMessageId, nextText.text, {
                 parseMode: nextText.parseMode,
                 fallbackText: nextText.fallbackText,
-                replyMarkup: abortKeyboard,
+                replyMarkup: cancelKeyboard,
             });
             lastRenderedText = nextText.text;
             lastEditAt = Date.now();
@@ -139,19 +144,7 @@ async function runPromptFlow(deps, ctx, target, userText, preloadedSlashCommands
         }, delay);
     };
     const removeAbortKeyboard = async () => {
-        if (!responseMessageId) {
-            return;
-        }
-        try {
-            await bot.api.editMessageReplyMarkup(target.chatId, responseMessageId, {
-                reply_markup: new InlineKeyboard(),
-            });
-        }
-        catch (error) {
-            if (!isMessageNotModifiedError(error)) {
-                console.error("Failed to clear Abort button", error);
-            }
-        }
+        // ✖️ остаётся на сообщении навсегда — ничего не чистим
     };
     const deliverRenderedChunks = async (chunks) => {
         if (chunks.length === 0) {
@@ -169,6 +162,7 @@ async function runPromptFlow(deps, ctx, target, userText, preloadedSlashCommands
             const message = await sendTextMessage(bot.api, target, firstChunk.text, {
                 parseMode: firstChunk.parseMode,
                 fallbackText: firstChunk.fallbackText,
+                replyParameters: replyToOriginal,
             });
             responseMessageId = message.message_id;
         }
@@ -176,6 +170,7 @@ async function runPromptFlow(deps, ctx, target, userText, preloadedSlashCommands
             await sendTextMessage(bot.api, target, chunk.text, {
                 parseMode: chunk.parseMode,
                 fallbackText: chunk.fallbackText,
+                replyParameters: replyToOriginal,
             });
         }
     };
@@ -398,17 +393,10 @@ async function runPromptFlow(deps, ctx, target, userText, preloadedSlashCommands
     }
 }
 export function createPromptHandler(options) {
-    const { isBusy, taskRunner, sendBusyReply, ...promptFlowDeps } = options;
+    const { taskRunner, ...promptFlowDeps } = options;
     return async (ctx, target, userText, preloadedSlashCommands, images) => {
-        if (isBusy(target)) {
-            await sendBusyReply(ctx);
-            return false;
-        }
         const result = taskRunner.tryStartPrompt(target, userText, () => runPromptFlow(promptFlowDeps, ctx, target, userText, preloadedSlashCommands, images));
-        if (result === "busy") {
-            await sendBusyReply(ctx);
-            return false;
-        }
-        return true;
+        // "queued" — молча в очередь, "started" — пошёл
+        return result.status === "started";
     };
 }

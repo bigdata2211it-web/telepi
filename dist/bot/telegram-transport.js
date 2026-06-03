@@ -35,11 +35,15 @@ export async function sendTextMessage(api, target, text, options = {}) {
     const parseMode = Object.prototype.hasOwnProperty.call(options, "parseMode")
         ? options.parseMode
         : "HTML";
+    const replyParams = options.replyParameters
+        ? { reply_parameters: options.replyParameters, reply_to_message_id: options.replyParameters.message_id }
+        : {};
     try {
         return await api.sendMessage(target.chatId, text, {
             ...(parseMode ? { parse_mode: parseMode } : {}),
             ...(target.messageThreadId !== undefined ? { message_thread_id: target.messageThreadId } : {}),
             reply_markup: options.replyMarkup,
+            ...replyParams,
         });
     }
     catch (error) {
@@ -47,6 +51,7 @@ export async function sendTextMessage(api, target, text, options = {}) {
             return await api.sendMessage(target.chatId, options.fallbackText, {
                 ...(target.messageThreadId !== undefined ? { message_thread_id: target.messageThreadId } : {}),
                 reply_markup: options.replyMarkup,
+                ...replyParams,
             });
         }
         throw error;
