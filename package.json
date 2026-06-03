@@ -55,6 +55,6 @@
   },
   "optionalDependencies": {
     "parakeet-coreml": "^2.2.0",
-    "sherpa-onnx-node": "1.12.32"
+    "sherpa-onnx-node": "^1.12.32"
   }
 }

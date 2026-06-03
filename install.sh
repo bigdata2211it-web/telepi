@@ -22,16 +22,15 @@ if ! command -v node &>/dev/null; then
 fi
 echo "✅ Node.js $(node --version)"
 
-# Проверка npm-зависимостей (оригинальный telepi)
+# Установка npm-зависимостей
 if [ ! -d "$FORKE_DIR/node_modules" ]; then
-  echo "⚠️  node_modules not found. Symlinking..."
-  ln -sf /home/debi/.npm-global/lib/node_modules/@futurelab-studio/telepi/node_modules "$FORKE_DIR/node_modules" 2>/dev/null || {
-    echo "❌ Original telepi not found at ~/.npm-global"
-    echo "   Install it first: npm i -g @futurelab-studio/telepi"
-    exit 1
-  }
+  echo "⏳ Устанавливаю зависимости..."
+  cd "$FORKE_DIR"
+  npm install
+  echo "✅ Зависимости установлены"
+else
+  echo "✅ node_modules уже есть"
 fi
-echo "✅ Dependencies ready"
 
 # Создаём конфиг директорию
 mkdir -p "$CONFIG_DIR"
