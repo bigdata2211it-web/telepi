@@ -5,10 +5,21 @@
 
 ## Быстрый старт
 
+### Напрямую (npm)
 ```bash
 cd /home/debi/DebiForeverProfile/telepi
 npm start
-# или: node dist/index.js
+```
+
+### Docker
+```bash
+docker build -t telepi .
+docker run -d --name telepi \
+  --restart unless-stopped \
+  -v ~/.config/telepi/config.env:/root/.config/telepi/config.env:ro \
+  -v ~/.pi:/root/.pi:ro \
+  -v ~/projects:/workspace \
+  telepi
 ```
 
 ## Статус
