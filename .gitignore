@@ -3,3 +3,4 @@ dist/.backup*
 *.log
 .DS_Store
 node_modules
+nssm.exe

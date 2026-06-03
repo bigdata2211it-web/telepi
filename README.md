@@ -16,6 +16,8 @@
 
 ## Быстрый старт
 
+### 🐧 Linux
+
 ```bash
 # Установка
 cd ~/DebiForeverProfile/telepi
@@ -29,13 +31,43 @@ nano ~/.config/telepi/config.env  # вставь токен
 tp start
 ```
 
+### 🪟 Windows
+
+```powershell
+# Установка (скачает NSSM, создаст конфиг, зарегистрирует сервис)
+.\install-windows.ps1
+
+# Или в одну строку с параметрами:
+.\install-windows.ps1 -BotToken "123456:ABC..." -UserIds "8570556962"
+
+# Управление
+.\telepi.psl status
+.\telepi.psl stop
+.\telepi.psl start
+.\telepi.psl logs
+
+# Удаление сервиса
+.\telepi.psl remove
+```
+
+**Требования:**
+- Node.js v20+ (https://nodejs.org/)
+- PowerShell 5.1+ (встроен в Windows 10/11)
+
 ## Команды
 
-| Команда | Что делает |
-|---------|-----------|
-| `tp start` | Запустить бота |
-| `tp start --instance mirror` | Запустить зеркало |
-| `systemctl --user restart telepi-debi` | Перезапустить |
+| Платформа | Команда | Что делает |
+|-----------|---------|-----------|
+| 🐧 Linux | `tp start` | Запустить бота |
+| 🐧 Linux | `tp start --instance mirror` | Запустить зеркало |
+| 🐧 Linux | `systemctl --user restart telepi` | Перезапустить сервис |
+| 🪟 Windows | `.\telepi.ps1 start` | Запустить бота |
+| 🪟 Windows | `.\telepi.ps1 start --instance mirror` | Запустить зеркало |
+| 🪟 Windows | `.\telepi.ps1 status` | Статус сервиса |
+| 🪟 Windows | `.\telepi.ps1 logs` | Показать логи |
+| 🪟 Windows | `.\telepi.ps1 stop` | Остановить |
+| 🪟 Windows | `.\telepi.ps1 restart` | Перезапустить |
+| 🪟 Windows | `.\telepi.ps1 remove` | Удалить сервис |
 
 ## Структура
 
