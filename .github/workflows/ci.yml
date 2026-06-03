@@ -22,16 +22,20 @@ jobs:
       - run: npm ci
 
       - name: Check JS syntax
-        run: node -e "import('./dist/bot.js')" && node -e "import('./dist/cli.js')"
-        working-directory: .
+        run: |
+          node --check dist/bot.js
+          node --check dist/cli.js
+          node --check dist/index.js
+          echo '✅ Все файлы синтаксис прошли'
 
       - name: Check package.json integrity
         run: |
-          node -e "
-            const p = require('./package.json');
+          node --input-type=module -e "
+            import { readFileSync } from 'fs';
+            const p = JSON.parse(readFileSync('./package.json', 'utf8'));
             console.log('✅ Package:', p.name, p.version);
             console.log('✅ Files:', (p.files || []).join(', '));
-            console.log('✅ Dependencies:', Object.keys(p.dependencies).length);
+            console.log('✅ Dependencies:', Object.keys(p.dependencies || {}).length);
           "
 
   # ───────────── CD: GitHub Release по тегу ─────────────
