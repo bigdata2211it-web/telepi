@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "socraticode": {
+      "command": "/home/debi/.npm-global/bin/socraticode",
+      "enabled": true,
+      "description": "Semantic codebase search, dependency graph, impact analysis"
+    }
+  }
+}
