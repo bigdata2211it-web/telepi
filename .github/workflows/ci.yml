@@ -1,0 +1,88 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  pull_request:
+    branches: [master]
+
+jobs:
+  # ───────────── CI: проверки на каждый push ─────────────
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Check JS syntax
+        run: node -e "import('./dist/bot.js')" && node -e "import('./dist/cli.js')"
+        working-directory: .
+
+      - name: Check package.json integrity
+        run: |
+          node -e "
+            const p = require('./package.json');
+            console.log('✅ Package:', p.name, p.version);
+            console.log('✅ Files:', (p.files || []).join(', '));
+            console.log('✅ Dependencies:', Object.keys(p.dependencies).length);
+          "
+
+  # ───────────── CD: GitHub Release по тегу ─────────────
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build tarball
+        run: |
+          npm pack
+          echo "TARBALL=$(ls *.tgz)" >> $GITHUB_ENV
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ github.ref_name }}
+          body: |
+            ## TelePi ${{ github.ref_name }}
+
+            См. [CHANGELOG.md](./CHANGELOG.md)
+
+            ### 📦 Установка
+
+            **Linux:**
+            ```bash
+            npm install -g gig-telepi
+            tp start
+            ```
+
+            **Windows:**
+            ```powershell
+            npm install -g gig-telepi
+            telepi.ps1 start
+            ```
+
+            **Или из исходников:**
+            ```bash
+            git clone https://github.com/bigdata2211it-web/telepi.git
+            cd telepi
+            npm install
+            npm start
+            ```
+          files: ${{ env.TARBALL }}
+          generate_release_notes: true

@@ -1,6 +1,6 @@
 {
-  "name": "telepi",
-  "version": "0.4.2-debi.1",
+  "name": "@itgigfather/telepi",
+  "version": "0.5.0",
   "description": "TelePi DebiStudio Fork — кроссплатформенный Telegram-бот для Pi Coding Agent. Voice, mirror, media, stealth, model search, 1M context.",
   "license": "MIT",
   "repository": {
@@ -30,11 +30,6 @@
   },
   "type": "module",
   "main": "./dist/index.js",
-  "bin": {
-    "tp": "./telepi.sh",
-    "telepi": "./telepi.sh",
-    "telepi-win": "./telepi.ps1"
-  },
   "files": [
     "dist",
     "telepi.sh",
